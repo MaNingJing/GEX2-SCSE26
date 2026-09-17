@@ -1,15 +1,12 @@
-## This module contains the user interface for the library system. 
+## This module contains the user interface for the library system.
 # It allows users to search for books, borrow books, and return books.
 
-## Import the necessary functions from the admin module. 
-# Replace "function_name1" with the actual function names you want to import.
-
+## Import the necessary functions from the admin module.
 from admin import (
-    function_name1,
-    function_name2,
-    function_name3
+    load_library,
+    save_library,
+    find_book
 )
-
 
 
 ## Search books by category.
@@ -18,9 +15,21 @@ def books_in_category(
     books,
     category
 ):
-    pass
+    if category is None:
+        return []
 
-    
+    target = category.strip().lower()
+
+    if target == "":
+        return []
+
+    result = []
+
+    for book_id, book in books.items():
+        if book["category"].lower() == target:
+            result.append(book_id)
+
+    return result
 
 
 ## Search books by full or partial title.
@@ -29,8 +38,21 @@ def search_by_title(
     books,
     search_text
 ):
-    pass
-    
+    if search_text is None:
+        return []
+
+    target = search_text.strip().lower()
+
+    if target == "":
+        return []
+
+    result = []
+
+    for book_id, book in books.items():
+        if target in book["title"].lower():
+            result.append(book_id)
+
+    return result
 
 
 ## Create logic to let users borrow books.
@@ -45,9 +67,32 @@ def borrow_book(
     search_text,
     borrower
 ):
-    pass
+    book_id = find_book(books, search_text)
 
-    
+    if book_id is None:
+        return "BOOK_NOT_FOUND"
+
+    if borrower is None:
+        return "EMPTY_NAME"
+
+    cleaned_borrower = borrower.strip()
+
+    if cleaned_borrower == "":
+        return "EMPTY_NAME"
+
+    book = books[book_id]
+
+    if not book["available"]:
+        return "NOT_AVAILABLE"
+
+    book["available"] = False
+
+    loans.append({
+        "book_id": book_id,
+        "borrower": cleaned_borrower
+    })
+
+    return "OK"
 
 
 ## Create logic to let users return books.
@@ -56,25 +101,135 @@ def borrow_book(
 ## If the borrower name is empty, then return "EMPTY_NAME"
 ## If the book is not on loan, then return "NOT_ON_LOAN"
 ## If the book is successfully returned, then return "OK"
-
 def return_book(
     books,
     loans,
     book_title,
     borrower
 ):
-    pass
+    # Find the book
+    book_id = find_book(books, book_title)
 
-    
+    if book_id is None:
+        return "BOOK_NOT_FOUND"
 
+    # Check borrower name
+    if borrower is None:
+        return "EMPTY_NAME"
+
+    cleaned_borrower = borrower.strip()
+
+    if cleaned_borrower == "":
+        return "EMPTY_NAME"
+
+    # Check if the book is on loan
+    if books[book_id]["available"]:
+        return "NOT_ON_LOAN"
+
+    # Find and remove the matching loan
+    loan_index = -1
+
+    for i, loan in enumerate(loans):
+        if loan["book_id"] == book_id:
+            loan_index = i
+            break
+
+    if loan_index == -1:
+        return "NOT_ON_LOAN"
+
+    loans.pop(loan_index)
+
+    books[book_id]["available"] = True
+
+    return "OK"
 
 
 ## The main function that runs the user interface for the library system.
-## The function must first load the library data from a JSON file, then display a menu for the user to select options.
-## The options include searching for books by title or category, borrowing a book, returning a book, and exiting the program.
-## When the user selects an option, the corresponding function is called to perform the action.
-## The program continues to display the menu until the user chooses to exit, at which point the library data is saved back to the JSON file.
-## The main function should also handle invalid selections by displaying an error message and prompting the user to select again.
 def main():
-    pass
+    data = load_library("library.json")
 
+    if data is None:
+        return
+
+    books = data["books"]
+    loans = data["loans"]
+
+    while True:
+        print()
+        print("LIBRARY USER SYSTEM")
+        print("=" * 60)
+        print("1. Search books by category")
+        print("2. Search books by title")
+        print("3. Borrow a book")
+        print("4. Return a book")
+        print("5. Exit")
+        print("=" * 60)
+
+        choice = input("Enter your choice: ").strip()
+
+        if choice == "1":
+            category = input("Enter category: ").strip()
+            result = books_in_category(books, category)
+
+            if len(result) == 0:
+                print("No books found in this category.")
+            else:
+                print(f"Found {len(result)} book(s):")
+                for book_id in result:
+                    book = books[book_id]
+                    print(f"  {book_id} | {book['title']}")
+
+        elif choice == "2":
+            search_text = input("Enter title (or part of title): ").strip()
+            result = search_by_title(books, search_text)
+
+            if len(result) == 0:
+                print("No books found matching this title.")
+            else:
+                print(f"Found {len(result)} book(s):")
+                for book_id in result:
+                    book = books[book_id]
+                    print(f"  {book_id} | {book['title']}")
+
+        elif choice == "3":
+            search_text = input("Enter book ID, title, or author: ").strip()
+            borrower = input("Enter your name: ").strip()
+
+            result = borrow_book(books, loans, search_text, borrower)
+
+            if result == "OK":
+                print("Book borrowed successfully!")
+            elif result == "BOOK_NOT_FOUND":
+                print("Error: Book not found.")
+            elif result == "EMPTY_NAME":
+                print("Error: Borrower name cannot be empty.")
+            elif result == "NOT_AVAILABLE":
+                print("Error: Book is not available (already on loan).")
+
+        elif choice == "4":
+            book_title = input("Enter book ID, title, or author: ").strip()
+            borrower = input("Enter your name: ").strip()
+
+            result = return_book(books, loans, book_title, borrower)
+
+            if result == "OK":
+                print("Book returned successfully!")
+            elif result == "BOOK_NOT_FOUND":
+                print("Error: Book not found.")
+            elif result == "EMPTY_NAME":
+                print("Error: Borrower name cannot be empty.")
+            elif result == "NOT_ON_LOAN":
+                print("Error: Book is not currently on loan.")
+
+        elif choice == "5":
+            # Save library data before exiting
+            save_library(data, "library.json")
+            print("Library data saved. Goodbye!")
+            break
+
+        else:
+            print("Invalid choice. Please select 1-5.")
+
+
+if __name__ == "__main__":
+    main()
