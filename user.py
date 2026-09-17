@@ -107,13 +107,11 @@ def return_book(
     book_title,
     borrower
 ):
-    # Find the book
     book_id = find_book(books, book_title)
 
     if book_id is None:
         return "BOOK_NOT_FOUND"
 
-    # Check borrower name
     if borrower is None:
         return "EMPTY_NAME"
 
@@ -122,11 +120,9 @@ def return_book(
     if cleaned_borrower == "":
         return "EMPTY_NAME"
 
-    # Check if the book is on loan
     if books[book_id]["available"]:
         return "NOT_ON_LOAN"
 
-    # Find and remove the matching loan
     loan_index = -1
 
     for i, loan in enumerate(loans):
@@ -222,7 +218,6 @@ def main():
                 print("Error: Book is not currently on loan.")
 
         elif choice == "5":
-            # Save library data before exiting
             save_library(data, "library.json")
             print("Library data saved. Goodbye!")
             break
